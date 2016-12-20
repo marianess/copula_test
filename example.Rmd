@@ -1,0 +1,92 @@
+---
+title: "Fit bivariate Gaussian copula to La and Ni data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+####Fitting bivariate copula to Olympic Dam data. Choice of pairs of elements was made on the basis of scatterplotof La and Ni.
+```{r include = FALSE}
+library(compositions)
+library(copula)
+library(VineCopula)
+library(dplyr)
+```
+
+Read data in, filter out samples from drillhole 1988 and perform log transformation
+
+```{r}
+hem <- read.csv("hem_sorted.txt", header=TRUE, sep="\t")
+hem <- hem %>% filter(Drillhole != "RD1988")
+hem.log <- log1p(hem[,8:53])
+```
+
+Produce a scatterplot of La vs Ni and calculate Pearson's correlation coefficient
+```{r}
+plot(hem.log$La139,hem.log$Ni60)
+abline(lm(hem.log$La139~hem.log$Ni60),col='red',lwd=1)
+cor(hem.log$La139,hem.log$Ni60,method='spearman')
+```
+
+
+Create normal two-dimensional copula
+```{r}
+n.cop <- normalCopula(dim=2)
+```
+
+Fit copula
+```{r}
+set.seed(500)
+m <-pobs(as.matrix(cbind(hem.log$La139,hem.log$Ni60)))
+fit <- fitCopula(n.cop,m,method='ml')
+rho = coef(fit)[1]
+print(rho)
+```
+
+A bivariate Gaussian copula with given parameter rho
+```{r}
+persp(normalCopula(dim=2,rho),dCopula)
+```
+
+Sample 380 points from normal bivariate copula with a givenparameter rho
+```{r}
+u <- rCopula(380, normalCopula(dim=2,rho))
+plot(u[,1],u[,2], col="darkblue")
+cor(u, method='pearson')
+```
+
+Model the margnals: calculate mean and standard deviations for La and Ni
+```{r}
+La_mu <- mean(hem.log$La139)
+La_sd <- sd(hem.log$La139)
+Ni_mu <- mean(hem.log$Ni60)
+Ni_sd <- sd(hem.log$Ni60)
+```
+
+Plot histograms of La and Ni with outlined normal distribution density function
+```{r}
+hist(hem.log$La139, density=20, breaks=10, prob=TRUE, 
+     xlab="La", ylim=c(0, 0.7), main="normal curve over histogram")
+curve(dnorm(x, mean=La_mu, sd=La_sd), col="darkblue", lwd=2, add=TRUE, yaxt="n")
+
+hist(hem.log$Ni60, density=20, breaks=10, prob=TRUE, 
+     xlab="Ni", ylim=c(0, 0.8),main="normal curve over histogram")
+curve(dnorm(x, mean=Ni_mu, sd=Ni_sd), col="darkblue", lwd=2, add=TRUE, yaxt="n")
+
+```
+
+Simulate data with two normally distributed marginals
+```{r}
+copula_dist <- mvdc(copula=normalCopula(rho,dim=2), margins=c("norm","norm"),
+               paramMargins=list(list(mean=La_mu, sd=La_sd),list(mean=Ni_mu, sd=Ni_mu)))
+
+sim <- rMvdc(380,copula_dist)
+```
+
+Plot observed and simulated points
+```{r}
+plot(hem.log$La139,hem.log$Ni60,main='observed')
+points(sim[,1],sim[,2],col='red')
+legend('bottomright',c('Observed','Simulated'),col=c('black','red'),pch=21)
+```
