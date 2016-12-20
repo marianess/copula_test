@@ -3,4 +3,5 @@ performed examples on copula
 
 ----20.12.2016----
 tryied to fit copula to max data
-Sn-bimodal disribtion
+many variables show bi/trimodal distributions
+
