@@ -1,6 +1,6 @@
 ---
 title: "Fit bivariate Gaussian copula to La and Ni data"
-output: html_document
+output: word_document
 ---
 
 ```{r setup, include=FALSE}
